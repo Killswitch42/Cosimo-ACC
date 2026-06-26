@@ -167,7 +167,7 @@ async def scan_invoice(
     try:
         from app.services.classifier_service import classify_transaction
         from app.config import settings
-        if settings.anthropic_api_key:
+        if settings.xai_api_key:
             clf_log = await classify_transaction(
                 session=session,
                 company_id=company_id,

@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     company_registered_office: Optional[str] = None
     fiscal_year_start_month: int = 1
 
-    anthropic_api_key: Optional[str] = None
+    xai_api_key: Optional[str] = None
     cnb_api_base_url: str = "https://api.cnb.cz/cnbapi/exrates"
     epartal_base_url: str = "https://adisspr.mfcr.cz"
     filing_output_dir: str = "/tmp/medici-analytica-filings"
