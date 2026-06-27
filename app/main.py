@@ -1,8 +1,13 @@
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
-from app.api.v1 import account_balances, ai_classify, alerts, compliance, health, invoices, journal_entries, periods, reports, vat_register
+from app.api.v1 import (
+    account_balances, ai_classify, alerts, auth, bank, compliance,
+    dashboard, health, invoices, journal_entries, nl_query, periods,
+    reports, vat_register,
+)
 from app.config import settings
 
 scheduler = AsyncIOScheduler()
@@ -34,6 +39,9 @@ def create_app() -> FastAPI:
         docs_url="/docs" if settings.debug else None,
         redoc_url="/redoc" if settings.debug else None,
     )
+    app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+    # Phase 01-05 API routers
     app.include_router(health.router, prefix="/api/v1")
     app.include_router(journal_entries.router, prefix="/api/v1")
     app.include_router(account_balances.router, prefix="/api/v1")
@@ -44,6 +52,12 @@ def create_app() -> FastAPI:
     app.include_router(compliance.router, prefix="/api/v1")
     app.include_router(ai_classify.router, prefix="/api/v1")
     app.include_router(reports.router, prefix="/api/v1")
+
+    # Phase 06: auth, dashboard UI, NL query, bank stub
+    app.include_router(auth.router)
+    app.include_router(dashboard.router)
+    app.include_router(nl_query.router)
+    app.include_router(bank.router, prefix="/api/v1")
 
     @app.on_event("startup")
     async def start_scheduler():

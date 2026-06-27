@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Přihlášení – Medici Analytica{% endblock %}
+{% block content %}
+<div class="login-box">
+    <h1>Medici Analytica</h1>
+    <p>Přihlášení do účetního systému</p>
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+    <form method="post" action="/auth/login">
+        <label>E-mail</label>
+        <input type="email" name="email" required autofocus>
+        <label>Heslo</label>
+        <input type="password" name="password" required>
+        <button type="submit">Přihlásit se</button>
+    </form>
+</div>
+{% endblock %}

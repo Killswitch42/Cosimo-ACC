@@ -91,3 +91,34 @@ async def phase05_clean_filing_tables():
         async with session.begin():
             await session.execute(text("DELETE FROM filing_records"))
     await engine.dispose()
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def phase06_seed_admin_user():
+    """Ensure admin user exists for Phase 06 auth tests (idempotent)."""
+    from app.models.user import User
+    from app.services.auth_service import hash_password
+
+    await engine.dispose()
+    async with async_session_factory() as session:
+        async with session.begin():
+            company_result = await session.execute(
+                select(Company).order_by(Company.created_at).limit(1)
+            )
+            company = company_result.scalar_one_or_none()
+            if not company:
+                return
+            existing = await session.scalar(
+                select(User).where(User.email == "admin@medicianalytica.cz")
+            )
+            if not existing:
+                admin = User(
+                    company_id=company.id,
+                    email="admin@medicianalytica.cz",
+                    full_name="Administrator",
+                    hashed_password=hash_password("changeme123"),
+                    role="admin",
+                    is_active=True,
+                )
+                session.add(admin)
+    await engine.dispose()

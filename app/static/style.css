@@ -1,0 +1,76 @@
+* { box-sizing: border-box; font-family: -apple-system, system-ui, sans-serif; }
+body { margin: 0; background: #f4f6f8; color: #1a1a2e; }
+
+.topnav {
+    background: #1a1a2e; color: white; padding: 12px 24px;
+    display: flex; align-items: center; gap: 20px;
+}
+.topnav .brand { font-weight: bold; font-size: 1.1em; }
+.topnav a { color: #c5c6e0; text-decoration: none; }
+.topnav a:hover { color: white; }
+.topnav .user-info { margin-left: auto; font-size: 0.9em; color: #9090b0; }
+
+.content { padding: 24px; max-width: 1100px; margin: 0 auto; }
+
+.kpi-row { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+.kpi-card {
+    background: white; border-radius: 8px; padding: 16px 20px;
+    flex: 1; min-width: 180px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.kpi-card.kpi-blocker { border-left: 4px solid #e74c3c; }
+.kpi-card.kpi-warning { border-left: 4px solid #f39c12; }
+.kpi-number { display: block; font-size: 1.8em; font-weight: bold; }
+.kpi-label { font-size: 0.85em; color: #666; }
+
+.dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.panel {
+    background: white; border-radius: 8px; padding: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.panel h2 { margin-top: 0; font-size: 1.1em; }
+
+.badge { padding: 3px 10px; border-radius: 12px; font-size: 0.75em; font-weight: bold; color: white; }
+.badge-blocker { background: #e74c3c; }
+.badge-warning { background: #f39c12; }
+.badge-info { background: #3498db; }
+
+.alert-table, .deadline-table { width: 100%; border-collapse: collapse; }
+.alert-table td, .deadline-table td {
+    padding: 8px 4px; border-bottom: 1px solid #eee; font-size: 0.9em;
+}
+.alert-table button, .deadline-table button {
+    padding: 4px 10px; background: #1a1a2e; color: white;
+    border: none; border-radius: 4px; cursor: pointer; font-size: 0.8em;
+}
+
+.empty-state { color: #888; font-style: italic; }
+
+.ask-panel { margin-top: 20px; }
+.ask-panel input {
+    padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.9em;
+}
+.ask-panel button {
+    padding: 8px 16px; background: #1a1a2e; color: white;
+    border: none; border-radius: 4px; cursor: pointer;
+}
+.ask-answer { margin-top: 12px; padding: 12px; background: #f0f4ff; border-radius: 6px; }
+#ask-response { margin-top: 12px; }
+
+.login-box {
+    max-width: 360px; margin: 80px auto; background: white;
+    padding: 32px; border-radius: 8px; box-shadow: 0 1px 6px rgba(0,0,0,0.15);
+}
+.login-box h1 { margin-top: 0; font-size: 1.4em; }
+.login-box form { display: flex; flex-direction: column; gap: 4px; }
+.login-box label { font-size: 0.85em; color: #666; margin-top: 8px; }
+.login-box input {
+    padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.9em;
+}
+.login-box button {
+    margin-top: 16px; padding: 10px; background: #1a1a2e;
+    color: white; border: none; border-radius: 4px; cursor: pointer;
+}
+.alert-error {
+    background: #fde8e8; color: #c0392b; padding: 10px;
+    border-radius: 4px; margin-bottom: 12px; font-size: 0.9em;
+}

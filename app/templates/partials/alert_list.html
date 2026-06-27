@@ -1,0 +1,20 @@
+{% if summary.recent_alerts %}
+<table class="alert-table">
+    {% for alert in summary.recent_alerts %}
+    <tr class="severity-{{ alert.severity|lower }}">
+        <td><span class="badge badge-{{ alert.severity|lower }}">{{ alert.severity }}</span></td>
+        <td>{{ alert.title }}</td>
+        <td>
+            <button hx-post="/dashboard/alerts/{{ alert.id }}/resolve"
+                    hx-target="#alert-list"
+                    hx-swap="innerHTML"
+                    hx-confirm="Vyřešit toto upozornění?">
+                Vyřešit
+            </button>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% else %}
+<p class="empty-state">Žádná otevřená upozornění.</p>
+{% endif %}

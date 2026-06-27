@@ -1,0 +1,13 @@
+{% if summary.deadlines %}
+<table class="deadline-table">
+    {% for dl in summary.deadlines %}
+    <tr class="severity-{{ dl.severity|lower }}">
+        <td>{{ dl.deadline_date }}</td>
+        <td>{{ dl.title }}</td>
+        <td><span class="badge badge-{{ dl.severity|lower }}">{{ dl.days_until }} dní</span></td>
+    </tr>
+    {% endfor %}
+</table>
+{% else %}
+<p class="empty-state">Žádné termíny v nejbližších 30 dnech.</p>
+{% endif %}

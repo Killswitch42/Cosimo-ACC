@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Dashboard – Medici Analytica{% endblock %}
+{% block content %}
+<h1>Přehled</h1>
+
+<div class="kpi-row">
+    <div class="kpi-card kpi-blocker">
+        <span class="kpi-number">{{ summary.alert_counts.get('BLOCKER', 0) }}</span>
+        <span class="kpi-label">Kritická upozornění</span>
+    </div>
+    <div class="kpi-card kpi-warning">
+        <span class="kpi-number">{{ summary.alert_counts.get('WARNING', 0) }}</span>
+        <span class="kpi-label">Upozornění</span>
+    </div>
+    <div class="kpi-card">
+        <span class="kpi-number">{{ "{:,.0f}".format(summary.unpaid_issued_total) }} Kč</span>
+        <span class="kpi-label">Neuhrazené vydané faktury</span>
+    </div>
+    <div class="kpi-card">
+        <span class="kpi-number">{{ "{:,.0f}".format(summary.unpaid_received_total) }} Kč</span>
+        <span class="kpi-label">Neuhrazené přijaté faktury</span>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <div class="panel">
+        <h2>Otevřená upozornění</h2>
+        <div id="alert-list"
+             hx-get="/dashboard/alerts-partial"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+            {% include "partials/alert_list.html" %}
+        </div>
+    </div>
+
+    <div class="panel">
+        <h2>Nadcházející termíny</h2>
+        {% include "partials/deadline_calendar.html" %}
+    </div>
+</div>
+
+<div class="panel ask-panel">
+    <h2>Zeptejte se na vaše data</h2>
+    <form hx-post="/ask" hx-target="#ask-response" hx-swap="innerHTML">
+        <input type="text" name="question"
+               placeholder="např. Jaké faktury nejsou zaplacené?"
+               style="width: 70%">
+        <button type="submit">Zeptat se</button>
+    </form>
+    <div id="ask-response"></div>
+</div>
+{% endblock %}

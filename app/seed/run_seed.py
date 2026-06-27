@@ -18,8 +18,10 @@ from app.database import async_session_factory
 from app.models.company import Company
 from app.models.fiscal_period import FiscalPeriod
 from app.models.ledger_account import LedgerAccount
+from app.models.user import User
 from app.seed.chart_of_accounts import get_full_chart
 from app.seed.compliance_rules import seed_compliance_rules
+from app.services.auth_service import hash_password
 
 
 async def seed_company(session: AsyncSession) -> Company:
@@ -106,6 +108,27 @@ async def seed_chart_of_accounts(session: AsyncSession) -> None:
     print(f"✓ Chart of accounts seeded: {len(missing_accounts)} new accounts")
 
 
+async def seed_admin_user(session: AsyncSession, company: Company) -> None:
+    existing = await session.scalar(
+        select(User).where(User.email == "admin@medicianalytica.cz").limit(1)
+    )
+    if existing:
+        print(f"✓ Admin user exists: {existing.email}")
+        return
+
+    admin = User(
+        company_id=company.id,
+        email="admin@medicianalytica.cz",
+        full_name="Administrator",
+        hashed_password=hash_password("changeme123"),
+        role="admin",
+        is_active=True,
+    )
+    session.add(admin)
+    await session.flush()
+    print(f"✓ Admin user created: {admin.email}  ⚠ CHANGE PASSWORD IMMEDIATELY")
+
+
 async def run() -> None:
     async with async_session_factory() as session:
         async with session.begin():
@@ -113,6 +136,7 @@ async def run() -> None:
             await seed_fiscal_period(session, company)
             await seed_chart_of_accounts(session)
             await seed_compliance_rules(session)
+            await seed_admin_user(session, company)
     print("\n✓ Seed complete. Medici Analytica is ready.")
 
 
