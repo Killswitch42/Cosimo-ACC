@@ -1,19 +1,7 @@
+"""Phase 06 left /api/v1/bank/import as a 501 stub; Phase 07 implemented it.
+The functional coverage now lives in test_bank_import.py / test_bank_matching.py.
+Only the auth guard is checked here."""
 import pytest
-
-
-@pytest.mark.asyncio
-async def test_bank_import_stub_returns_501(client):
-    login_resp = await client.post(
-        "/auth/login",
-        data={"email": "admin@medicianalytica.cz", "password": "changeme123"},
-        follow_redirects=False,
-    )
-    token = login_resp.cookies.get("access_token")
-    client.cookies.set("access_token", token)
-
-    response = await client.post("/api/v1/bank/import")
-    assert response.status_code == 501
-    assert "Phase 07" in response.json()["detail"]
 
 
 @pytest.mark.asyncio

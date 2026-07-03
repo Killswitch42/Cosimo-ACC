@@ -2,5 +2,31 @@
 {% block title %}Výkazy – Medici Analytica{% endblock %}
 {% block content %}
 <h1>Výkazy</h1>
-<p>Rozvaha, VZZ a DPH výkazy jsou dostupné přes API — viz <a href="/docs">/docs</a>.</p>
+
+<div class="panel">
+    <h2>Roční výkazy (PDF)</h2>
+    <form method="get" target="_blank">
+        <label>Rok <input name="period_label" value="2024" size="6"></label>
+        <button formaction="/api/v1/reports/rozvaha/pdf">Rozvaha</button>
+        <button formaction="/api/v1/reports/vzz/pdf">Výkaz zisku a ztráty</button>
+        <button formaction="/api/v1/reports/dppo/pdf">DPPO (daň z příjmů)</button>
+    </form>
+    <p style="color:#666;font-size:0.9em">
+        DPPO je zjednodušený výpočet (VZZ zisk + neuznatelné položky § 25),
+        nikoli oficiální přiznání DPDPPO.
+    </p>
+</div>
+
+<div class="panel">
+    <h2>DPH — měsíční / čtvrtletní</h2>
+    <p>
+        Přiznání k DPH a kontrolní hlášení se generují přes API (vyžadují
+        rekonciliaci období):
+    </p>
+    <ul>
+        <li><code>POST /api/v1/reports/dph-priznani/generate?vat_period=RRRR-MM</code></li>
+        <li><code>POST /api/v1/reports/kontrolni-hlaseni/generate?vat_period=RRRR-MM</code></li>
+    </ul>
+    <p>Kompletní API: <a href="/docs">/docs</a></p>
+</div>
 {% endblock %}

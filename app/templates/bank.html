@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Banka – Medici Analytica{% endblock %}
+{% block content %}
+<h1>Bankovní výpisy</h1>
+
+<div class="panel">
+    <h2>Import výpisu</h2>
+    <form hx-post="/bank/upload"
+          hx-target="#bank-table"
+          hx-swap="innerHTML"
+          hx-encoding="multipart/form-data">
+        <input type="text" name="bank_account_number" placeholder="Číslo účtu" required>
+        <select name="format">
+            <option value="csv">CSV</option>
+            <option value="mt940">MT940</option>
+        </select>
+        <input type="file" name="file" required>
+        <button type="submit">Nahrát a spárovat</button>
+    </form>
+    <form hx-post="/bank/auto-match" hx-target="#bank-table" hx-swap="innerHTML"
+          style="margin-top: 0.5rem">
+        <button type="submit">Znovu spárovat</button>
+    </form>
+</div>
+
+<div class="panel">
+    <h2>Transakce</h2>
+    <div id="bank-table">
+        {% include "partials/bank_table.html" %}
+    </div>
+</div>
+{% endblock %}

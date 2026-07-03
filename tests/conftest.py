@@ -94,6 +94,17 @@ async def phase05_clean_filing_tables():
 
 
 @pytest_asyncio.fixture(autouse=True)
+async def phase07_clean_bank_tables():
+    """Clear bank_transactions before each test. The 0007 SET NULL FKs mean
+    this stays FK-safe regardless of order relative to the invoice cleanup."""
+    await engine.dispose()
+    async with async_session_factory() as session:
+        async with session.begin():
+            await session.execute(text("DELETE FROM bank_transactions"))
+    await engine.dispose()
+
+
+@pytest_asyncio.fixture(autouse=True)
 async def phase06_seed_admin_user():
     """Ensure admin user exists for Phase 06 auth tests (idempotent)."""
     from app.models.user import User

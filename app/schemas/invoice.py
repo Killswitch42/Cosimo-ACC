@@ -42,6 +42,7 @@ class InvoiceCreate(BaseModel):
     invoice_date: date
     duzp: date
     due_date: Optional[date] = None
+    variable_symbol: Optional[str] = None
     counterparty_name: str
     counterparty_ico: Optional[str] = None
     counterparty_dic: Optional[str] = None
@@ -91,6 +92,7 @@ class InvoiceResponse(BaseModel):
     invoice_number: str
     invoice_date: date
     duzp: date
+    variable_symbol: Optional[str] = None
     counterparty_name: str
     counterparty_dic: Optional[str]
     status: str

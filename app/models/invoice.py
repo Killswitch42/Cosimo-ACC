@@ -34,6 +34,8 @@ class Invoice(Base, TimestampMixin):
     duzp: Mapped[date] = mapped_column(Date, nullable=False, index=True)
     due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     payment_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # Variable symbol — the payment reference banks match against (Phase 07).
+    variable_symbol: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
     counterparty_name: Mapped[str] = mapped_column(String(255), nullable=False)
     counterparty_ico: Mapped[str | None] = mapped_column(String(8), nullable=True, index=True)
     counterparty_dic: Mapped[str | None] = mapped_column(

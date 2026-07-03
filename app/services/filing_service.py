@@ -21,7 +21,10 @@ from app.services.dph_xml_service import build_dph_priznani_xml, compute_checksu
 from app.services.kh_xml_service import build_kh_xml
 from app.services.rozvaha_service import generate_rozvaha
 from app.services.vzz_service import generate_vzz
-from app.services.pdf_report_service import render_rozvaha_pdf, render_vzz_pdf
+from app.services.dppo_service import compute_dppo
+from app.services.pdf_report_service import (
+    render_dppo_pdf, render_rozvaha_pdf, render_vzz_pdf
+)
 
 
 class FilingError(Exception):
@@ -253,6 +256,49 @@ async def generate_vzz_report(
         id=uuid.uuid4(),
         company_id=company_id,
         filing_type="VZZ",
+        period_label=period_label,
+        status="generated",
+        reconciliation_passed=True,
+        reconciliation_detail=None,
+        file_path=file_path,
+        file_checksum_sha256=checksum,
+        generated_at=datetime.now(timezone.utc),
+        generated_by=generated_by,
+    )
+    session.add(record)
+    await session.flush()
+    return record, pdf_bytes
+
+
+async def generate_dppo_report(
+    session: AsyncSession,
+    company_id: uuid.UUID,
+    fiscal_period_id: uuid.UUID,
+    period_label: str,
+    generated_by: str = "system",
+) -> tuple[FilingRecord, bytes]:
+    """Generate the simplified DPPO PDF. Returns (FilingRecord, pdf_bytes)."""
+    company   = await get_company(session, company_id)
+    year      = int(period_label[:4])
+    dppo_data = await compute_dppo(session, company_id, fiscal_period_id, year)
+
+    pdf_bytes = render_dppo_pdf(
+        company_name=company.name,
+        company_ico=company.ico or "",
+        period_label=period_label,
+        dppo_data=dppo_data,
+    )
+    checksum = compute_checksum(pdf_bytes)
+
+    output_dir = _ensure_output_dir()
+    file_path = os.path.join(output_dir, f"DPPO_{period_label}.pdf")
+    with open(file_path, "wb") as f:
+        f.write(pdf_bytes)
+
+    record = FilingRecord(
+        id=uuid.uuid4(),
+        company_id=company_id,
+        filing_type="DPPO",
         period_label=period_label,
         status="generated",
         reconciliation_passed=True,

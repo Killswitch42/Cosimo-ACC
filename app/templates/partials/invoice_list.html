@@ -1,0 +1,66 @@
+{% if error %}
+<p class="badge badge-blocker" style="display:block;padding:0.5rem">⚠ {{ error }}</p>
+{% endif %}
+{% if success %}
+<p class="badge badge-info" style="display:block;padding:0.5rem">✓ {{ success }}</p>
+{% endif %}
+
+{% if invoices %}
+<table class="alert-table">
+    <thead>
+        <tr>
+            <th>Číslo</th>
+            <th>Datum</th>
+            <th>Typ</th>
+            <th>Protistrana</th>
+            <th>Částka s DPH</th>
+            <th>Stav</th>
+            <th>Úhrada</th>
+            <th>Doklad</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for inv in invoices %}
+        <tr>
+            <td>{{ inv.invoice_number }}</td>
+            <td>{{ inv.invoice_date }}</td>
+            <td>{{ 'Vydaná' if inv.direction == 'ISSUED' else 'Přijatá' }}</td>
+            <td>{{ inv.counterparty_name }}</td>
+            <td>{{ "{:,.2f}".format(inv.total_gross_czk) }} Kč</td>
+            <td>
+                <span class="badge badge-{{ 'info' if inv.status == 'posted'
+                    else 'blocker' if inv.status == 'voided' else 'warning' }}">
+                    {{ inv.status }}
+                </span>
+            </td>
+            <td>{{ inv.payment_date if inv.payment_date else '—' }}</td>
+            <td>
+                {% if inv.document_path %}
+                    <a href="/api/v1/invoices/{{ inv.id }}/document">Stáhnout</a>
+                {% else %}
+                    <form hx-post="/invoices/{{ inv.id }}/document-ui"
+                          hx-target="#invoice-list" hx-swap="innerHTML"
+                          hx-encoding="multipart/form-data" style="display:inline">
+                        <input type="file" name="file" required>
+                        <button type="submit">Nahrát</button>
+                    </form>
+                {% endif %}
+            </td>
+            <td>
+                {% if inv.status == 'posted' %}
+                    <button hx-post="/invoices/{{ inv.id }}/void-ui"
+                            hx-target="#invoice-list" hx-swap="innerHTML"
+                            hx-prompt="Důvod storna:"
+                            hx-confirm="Opravdu stornovat fakturu {{ inv.invoice_number }}? Vytvoří se opravný (storno) zápis.">
+                        Storno
+                    </button>
+                {% endif %}
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>Zatím žádné doklady. Přidejte první pomocí formuláře výše.</p>
+{% endif %}

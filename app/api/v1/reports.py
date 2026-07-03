@@ -17,10 +17,12 @@ from app.services.report_data_service import (
 )
 from app.services.rozvaha_service import generate_rozvaha
 from app.services.vzz_service import generate_vzz
+from app.services.dppo_service import compute_dppo
 from app.services.pdf_report_service import render_rozvaha_pdf, render_vzz_pdf
 from app.services.filing_service import (
     FilingError,
     generate_dph_priznani,
+    generate_dppo_report,
     generate_kontrolni_hlaseni,
     generate_rozvaha_report,
     generate_vzz_report,
@@ -202,4 +204,56 @@ async def vzz_pdf_endpoint(
         content=pdf_bytes,
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="VZZ_{period_label}.pdf"'},
+    )
+
+
+# ── DPPO (daň z příjmů právnických osob) ──────────────────────────────────────
+
+@router.get("/dppo/data")
+async def dppo_data_endpoint(
+    period_label: str = Query(..., description="Format: YYYY"),
+    session: AsyncSession = Depends(get_session),
+):
+    """Return the simplified DPPO estimate as JSON."""
+    company_id = await get_default_company_id(session)
+    try:
+        period = await get_period_by_label(session, company_id, period_label)
+    except ReportDataError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    data = await compute_dppo(session, company_id, period.id, int(period_label[:4]))
+    return {
+        "year": data["year"],
+        "profit_before_tax": str(data["profit_before_tax"]),
+        "adjustments": [
+            {"account": a["account"], "label": a["label"], "amount": str(a["amount"])}
+            for a in data["adjustments"]
+        ],
+        "total_adjustments": str(data["total_adjustments"]),
+        "tax_base": str(data["tax_base"]),
+        "rounded_tax_base": str(data["rounded_tax_base"]),
+        "rate": str(data["rate"]),
+        "tax": str(data["tax"]),
+        "net_profit_after_tax": str(data["net_profit_after_tax"]),
+        "is_simplified": data["is_simplified"],
+    }
+
+
+@router.get("/dppo/pdf")
+async def dppo_pdf_endpoint(
+    period_label: str = Query(..., description="Format: YYYY"),
+    session: AsyncSession = Depends(get_session),
+):
+    """Generate and return the simplified DPPO PDF."""
+    company_id = await get_default_company_id(session)
+    try:
+        period = await get_period_by_label(session, company_id, period_label)
+    except ReportDataError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    _record, pdf_bytes = await generate_dppo_report(
+        session, company_id, period.id, period_label, generated_by="api_user"
+    )
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="DPPO_{period_label}.pdf"'},
     )

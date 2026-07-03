@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import async_session_factory
 from app.models.alert import AlertRecord
 from app.models.user import User
-from app.services.auth_service import get_current_user
+from app.services.auth_service import get_current_user, get_current_user_web
 from app.services.dashboard_service import get_dashboard_summary
 
 router = APIRouter(tags=["dashboard"])
@@ -26,12 +26,22 @@ async def get_session():
 @router.get("/", response_class=HTMLResponse)
 async def dashboard_page(
     request: Request,
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_current_user_web),
     session: AsyncSession = Depends(get_session),
 ):
     summary = await get_dashboard_summary(session, user.company_id)
     return templates.TemplateResponse(
         "dashboard.html", {"request": request, "user": user, "summary": summary}
+    )
+
+
+@router.get("/reports", response_class=HTMLResponse)
+async def reports_page(
+    request: Request,
+    user: User = Depends(get_current_user_web),
+):
+    return templates.TemplateResponse(
+        "reports.html", {"request": request, "user": user}
     )
 
 

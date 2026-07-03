@@ -82,6 +82,60 @@ def render_rozvaha_pdf(
     return buffer.read()
 
 
+def render_dppo_pdf(
+    company_name: str,
+    company_ico: str,
+    period_label: str,
+    dppo_data: dict,
+) -> bytes:
+    """Render the simplified DPPO estimate as PDF bytes."""
+    buffer  = io.BytesIO()
+    doc     = SimpleDocTemplate(buffer, pagesize=A4, topMargin=20*mm, bottomMargin=20*mm)
+    styles  = getSampleStyleSheet()
+    title_s = ParagraphStyle("T", parent=styles["Heading1"], fontSize=14)
+    elems   = []
+
+    elems.append(Paragraph(f"Daň z příjmů právnických osob — {company_name}", title_s))
+    elems.append(Paragraph(f"IČO: {company_ico} | Období: {period_label}", styles["Normal"]))
+    elems.append(Spacer(1, 8*mm))
+
+    rows = [["Položka", "Hodnota"]]
+    rows.append(["Výsledek hospodaření před zdaněním", _fmt_czk(dppo_data["profit_before_tax"])])
+    for adj in dppo_data["adjustments"]:
+        rows.append([f"+ Připočitatelná položka ({adj['account']})", _fmt_czk(adj["amount"])])
+    rows.append(["Základ daně", _fmt_czk(dppo_data["tax_base"])])
+    rows.append(["Základ daně zaokrouhlený (na tisíce dolů)", _fmt_czk(dppo_data["rounded_tax_base"])])
+    rows.append([f"Sazba daně", f"{dppo_data['rate']} %"])
+    rows.append(["Daň z příjmů", _fmt_czk(dppo_data["tax"])])
+    rows.append(["Výsledek hospodaření po zdanění", _fmt_czk(dppo_data["net_profit_after_tax"])])
+
+    style = TableStyle([
+        ("BACKGROUND",  (0, 0), (-1, 0), colors.HexColor("#2c3e50")),
+        ("TEXTCOLOR",   (0, 0), (-1, 0), colors.white),
+        ("FONTNAME",    (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("ALIGN",       (1, 0), (1, -1), "RIGHT"),
+        ("FONTNAME",    (0, -1), (-1, -1), "Helvetica-Bold"),
+        ("LINEABOVE",   (0, -1), (-1, -1), 1, colors.black),
+    ])
+    t = Table(rows, colWidths=[310, 140])
+    t.setStyle(style)
+    elems.append(t)
+
+    if dppo_data.get("is_simplified"):
+        note = ParagraphStyle("N", parent=styles["Normal"], fontSize=8, textColor=colors.grey)
+        elems.append(Spacer(1, 6*mm))
+        elems.append(Paragraph(
+            "Zjednodušený výpočet: zahrnuje pouze rozpoznané neuznatelné náklady "
+            "(§ 25 ZDP). Neobsahuje daňovou ztrátu, odčitatelné položky ani zálohy. "
+            "Nejedná se o daňové přiznání (DPDPPO).",
+            note,
+        ))
+
+    doc.build(elems)
+    buffer.seek(0)
+    return buffer.read()
+
+
 def render_vzz_pdf(
     company_name: str,
     company_ico: str,

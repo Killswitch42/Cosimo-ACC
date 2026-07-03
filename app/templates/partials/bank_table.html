@@ -1,0 +1,59 @@
+{% if transactions %}
+<table class="alert-table">
+    <thead>
+        <tr>
+            <th>Datum</th>
+            <th>Směr</th>
+            <th>Částka</th>
+            <th>VS</th>
+            <th>Protistrana</th>
+            <th>Stav</th>
+            <th>Akce</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for tx in transactions %}
+        {% set target_dir = 'ISSUED' if tx.direction == 'CREDIT' else 'RECEIVED' %}
+        <tr>
+            <td>{{ tx.transaction_date }}</td>
+            <td>{{ 'Příjem' if tx.direction == 'CREDIT' else 'Výdaj' }}</td>
+            <td>{{ "{:,.2f}".format(tx.amount_czk) }} Kč</td>
+            <td>{{ tx.variable_symbol or '—' }}</td>
+            <td>{{ tx.counterparty_name or '—' }}</td>
+            <td>
+                <span class="badge badge-{{ 'info' if tx.match_status == 'MATCHED'
+                    else 'warning' if tx.match_status == 'SUGGESTED' else 'blocker' }}">
+                    {{ tx.match_status }}
+                </span>
+            </td>
+            <td>
+                {% if tx.is_reconciled %}
+                    {% set inv = invoices_by_id.get(tx.matched_invoice_id) %}
+                    <button hx-post="/bank/tx/{{ tx.id }}/unmatch"
+                            hx-target="#bank-table" hx-swap="innerHTML"
+                            hx-confirm="Zrušit spárování a stornovat úhradu?">
+                        Zrušit
+                    </button>
+                {% else %}
+                    <form hx-post="/bank/tx/{{ tx.id }}/confirm"
+                          hx-target="#bank-table" hx-swap="innerHTML"
+                          style="display:inline">
+                        <select name="invoice_id">
+                            {% for inv in open_invoices if inv.direction == target_dir %}
+                            <option value="{{ inv.id }}">
+                                {{ inv.invoice_number }} — {{ "{:,.2f}".format(inv.total_gross_czk) }} Kč
+                                {% if inv.variable_symbol %}(VS {{ inv.variable_symbol }}){% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit">Spárovat</button>
+                    </form>
+                {% endif %}
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>Zatím žádné bankovní transakce. Nahrajte výpis výše.</p>
+{% endif %}

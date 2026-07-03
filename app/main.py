@@ -1,14 +1,16 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from app.api.v1 import (
-    account_balances, ai_classify, alerts, auth, bank, compliance,
-    dashboard, health, invoices, journal_entries, nl_query, periods,
-    reports, vat_register,
+    account_balances, ai_classify, alerts, auth, bank, bank_ui, compliance,
+    dashboard, health, invoices, invoices_ui, journal_entries, ledger_ui,
+    nl_query, periods, reports, vat_register,
 )
 from app.config import settings
+from app.services.auth_service import NotAuthenticatedError
 
 scheduler = AsyncIOScheduler()
 
@@ -41,6 +43,11 @@ def create_app() -> FastAPI:
     )
     app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
+    @app.exception_handler(NotAuthenticatedError)
+    async def not_authenticated_handler(request: Request, exc: NotAuthenticatedError):
+        """Redirect unauthenticated browser visitors to the login page."""
+        return RedirectResponse(url="/auth/login", status_code=303)
+
     # Phase 01-05 API routers
     app.include_router(health.router, prefix="/api/v1")
     app.include_router(journal_entries.router, prefix="/api/v1")
@@ -57,6 +64,9 @@ def create_app() -> FastAPI:
     app.include_router(auth.router)
     app.include_router(dashboard.router)
     app.include_router(nl_query.router)
+    app.include_router(invoices_ui.router)
+    app.include_router(ledger_ui.router)
+    app.include_router(bank_ui.router)
     app.include_router(bank.router, prefix="/api/v1")
 
     @app.on_event("startup")

@@ -2,5 +2,57 @@
 {% block title %}Účetnictví – Medici Analytica{% endblock %}
 {% block content %}
 <h1>Účetní deník</h1>
-<p>Prohlížení účetních zápisů — plná implementace v Phase 07.</p>
+
+<div class="dashboard-grid">
+    <div class="panel">
+        <h2>Zápisy (posledních {{ limit }})</h2>
+        {% if entries %}
+        <table class="alert-table">
+            <thead>
+                <tr>
+                    <th>Číslo</th>
+                    <th>Datum</th>
+                    <th>Popis</th>
+                    <th>Stav</th>
+                    <th>Částka</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for e in entries %}
+                {% set total = e.lines | selectattr('side', 'equalto', 'DEBIT')
+                                        | map(attribute='amount_czk') | sum %}
+                <tr>
+                    <td>{{ e.entry_number }}</td>
+                    <td>{{ e.entry_date }}</td>
+                    <td>{{ e.description }}</td>
+                    <td>
+                        <span class="badge badge-{{ 'info' if e.status == 'posted'
+                            else 'warning' if e.status == 'reversed' else 'blocker' }}">
+                            {{ e.status }}
+                        </span>
+                    </td>
+                    <td>{{ "{:,.2f}".format(total) }} Kč</td>
+                    <td>
+                        <button hx-get="/ledger/{{ e.id }}"
+                                hx-target="#entry-detail" hx-swap="innerHTML">
+                            Zobrazit
+                        </button>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>Zatím žádné účetní zápisy. Vytvořte fakturu na stránce Faktury.</p>
+        {% endif %}
+    </div>
+
+    <div class="panel">
+        <h2>Detail zápisu</h2>
+        <div id="entry-detail">
+            <p>Vyberte zápis vlevo pro zobrazení řádků.</p>
+        </div>
+    </div>
+</div>
 {% endblock %}

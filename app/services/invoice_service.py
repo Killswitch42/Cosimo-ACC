@@ -209,6 +209,12 @@ async def post_invoice(
         total_gross_czk += gross_czk
 
     vat_period = resolve_vat_period(data.duzp)
+    # Variable symbol: use the supplied value, else derive from the invoice
+    # number's digits (max 10, the Czech VS length) so bank matching has a key.
+    variable_symbol = data.variable_symbol
+    if not variable_symbol:
+        digits = "".join(ch for ch in data.invoice_number if ch.isdigit())
+        variable_symbol = digits[-10:] if digits else None
     invoice = Invoice(
         id=invoice_id,
         company_id=company_id,
@@ -219,6 +225,7 @@ async def post_invoice(
         invoice_date=data.invoice_date,
         duzp=data.duzp,
         due_date=data.due_date,
+        variable_symbol=variable_symbol,
         counterparty_name=data.counterparty_name,
         counterparty_ico=data.counterparty_ico,
         counterparty_dic=data.counterparty_dic,

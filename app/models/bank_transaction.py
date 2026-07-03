@@ -47,6 +47,11 @@ class BankTransaction(Base, TimestampMixin):
     )
     is_reconciled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
+    # UNMATCHED | SUGGESTED | MATCHED | IGNORED — drives the reconciliation UI.
+    match_status: Mapped[str] = mapped_column(
+        String(15), nullable=False, default="UNMATCHED"
+    )
+
     # Source: MANUAL_CSV | MT940 | API_<bank_name> — set by Phase 07
     import_source: Mapped[str] = mapped_column(
         String(30), nullable=False, default="MANUAL_CSV"

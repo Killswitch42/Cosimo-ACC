@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     cnb_api_base_url: str = "https://api.cnb.cz/cnbapi/exrates"
     epartal_base_url: str = "https://adisspr.mfcr.cz"
     filing_output_dir: str = "/tmp/medici-analytica-filings"
+    document_storage_dir: str = "/tmp/medici-analytica-documents"
 
     @field_validator("debug", mode="before")
     @classmethod

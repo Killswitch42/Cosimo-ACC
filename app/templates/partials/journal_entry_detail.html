@@ -1,0 +1,26 @@
+<h3>{{ entry.entry_number }}</h3>
+<p>
+    <strong>Datum:</strong> {{ entry.entry_date }}<br>
+    <strong>Popis:</strong> {{ entry.description }}<br>
+    <strong>Typ:</strong> {{ entry.entry_type }} |
+    <strong>Stav:</strong> {{ entry.status }}<br>
+    {% if entry.source_type %}<strong>Zdroj:</strong> {{ entry.source_type }}<br>{% endif %}
+    {% if entry.posted_by %}<strong>Zaúčtoval:</strong> {{ entry.posted_by }}<br>{% endif %}
+</p>
+
+<table class="alert-table">
+    <thead>
+        <tr><th>Účet</th><th>Strana</th><th>MD (Kč)</th><th>Dal (Kč)</th><th>Popis</th></tr>
+    </thead>
+    <tbody>
+    {% for l in lines %}
+        <tr>
+            <td>{{ l.account_number }}</td>
+            <td>{{ 'MD' if l.side == 'DEBIT' else 'Dal' }}</td>
+            <td>{{ "{:,.2f}".format(l.amount_czk) if l.side == 'DEBIT' else '' }}</td>
+            <td>{{ "{:,.2f}".format(l.amount_czk) if l.side == 'CREDIT' else '' }}</td>
+            <td>{{ l.description or '' }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>

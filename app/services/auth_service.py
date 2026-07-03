@@ -22,6 +22,15 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
 
+class NotAuthenticatedError(Exception):
+    """Raised by full-page routes when no valid session exists.
+
+    An exception handler (registered in app.main) turns this into a
+    redirect to the login page — unlike the JSON 401 raised for API/HTMX
+    endpoints via get_current_user.
+    """
+
+
 def hash_password(password: str) -> str:
     salt = bcrypt.gensalt()
     return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
@@ -79,6 +88,30 @@ async def get_current_user(request: Request) -> User:
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Uživatel nenalezen nebo deaktivován.",
             )
+        return user
+
+
+async def get_current_user_web(request: Request) -> User:
+    """FastAPI dependency for full HTML page routes.
+
+    Same as get_current_user, but raises NotAuthenticatedError (→ redirect
+    to the login page) instead of a JSON 401 when the session is missing or
+    invalid. Use this on routes a human visits directly in a browser.
+    """
+    token = request.cookies.get("access_token")
+    if not token:
+        raise NotAuthenticatedError()
+    try:
+        payload = decode_access_token(token)
+        user_id = uuid.UUID(payload["sub"])
+    except (HTTPException, KeyError, ValueError):
+        raise NotAuthenticatedError()
+
+    async with async_session_factory() as session:
+        result = await session.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
+        if not user or not user.is_active:
+            raise NotAuthenticatedError()
         return user
 
 

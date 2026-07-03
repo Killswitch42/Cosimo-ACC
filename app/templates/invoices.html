@@ -1,6 +1,59 @@
 {% extends "base.html" %}
 {% block title %}Faktury – Medici Analytica{% endblock %}
 {% block content %}
-<h1>Faktury</h1>
-<p>Správa faktur — plná implementace v Phase 07.</p>
+<h1>Faktury a doklady</h1>
+
+<div class="panel">
+    <h2>Nová faktura / účtenka</h2>
+    <form hx-post="/invoices/create" hx-target="#invoice-list" hx-swap="innerHTML">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.6rem;max-width:900px">
+            <label>Typ dokladu<br>
+                <select name="direction">
+                    <option value="RECEIVED">Přijatá (výdaj / účtenka)</option>
+                    <option value="ISSUED">Vydaná (příjem)</option>
+                </select>
+            </label>
+            <label>Číslo dokladu<br><input name="invoice_number" required></label>
+            <label>Variabilní symbol<br><input name="variable_symbol" placeholder="nepovinné"></label>
+
+            <label>Datum vystavení<br><input type="date" name="invoice_date" required></label>
+            <label>DUZP<br><input type="date" name="duzp" placeholder="= datum vystavení"></label>
+            <label>Splatnost<br><input type="date" name="due_date"></label>
+
+            <label>Protistrana<br><input name="counterparty_name" required></label>
+            <label>IČO<br><input name="counterparty_ico" placeholder="nepovinné"></label>
+            <label>DIČ<br><input name="counterparty_dic" placeholder="např. CZ12345678"></label>
+
+            <label>Popis položky<br><input name="line_description" required></label>
+            <label>Částka bez DPH<br><input name="unit_price_net" type="number" step="0.01" min="0" required></label>
+            <label>Sazba DPH<br>
+                <select name="vat_rate">
+                    <option value="21.00">21 %</option>
+                    <option value="12.00">12 %</option>
+                    <option value="0.00">0 %</option>
+                </select>
+            </label>
+
+            <label>Účet (nepovinné)<br>
+                <input name="account_number" list="accounts" placeholder="602 / 518 / 513…">
+            </label>
+        </div>
+        <datalist id="accounts">
+            <option value="602">602 – Tržby z prodeje služeb</option>
+            <option value="604">604 – Tržby za zboží</option>
+            <option value="518">518 – Ostatní služby</option>
+            <option value="501">501 – Spotřeba materiálu</option>
+            <option value="513">513 – Reprezentace (daňově neuznatelné)</option>
+            <option value="543">543 – Dary (daňově neuznatelné)</option>
+        </datalist>
+        <p><button type="submit">Uložit a zaúčtovat</button></p>
+    </form>
+</div>
+
+<div class="panel">
+    <h2>Seznam dokladů</h2>
+    <div id="invoice-list">
+        {% include "partials/invoice_list.html" %}
+    </div>
+</div>
 {% endblock %}
