@@ -1,13 +1,17 @@
+import logging
+
 from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
+security_logger = logging.getLogger("medici.security")
+
 from app.api.v1 import (
-    account_balances, ai_classify, alerts, auth, bank, bank_ui, compliance,
-    dashboard, health, invoices, invoices_ui, journal_entries, ledger_ui,
-    nl_query, periods, reports, vat_register,
+    account_balances, ai_classify, alerts, auth, backup, bank, bank_ui,
+    compliance, dashboard, health, invoices, invoices_ui, journal_entries,
+    ledger_ui, nl_query, periods, reports, vat_register,
 )
 from app.config import settings
 from app.services.auth_service import NotAuthenticatedError
@@ -31,6 +35,17 @@ async def daily_watchdog_job():
         async with session.begin():
             await run_deadline_scan(session, company_id)
             await scan_vat_period(session, company_id, vat_period)
+
+
+async def nightly_backup_job():
+    """Runs at 02:00 CET when Google Drive backup is enabled."""
+    from app.services.backup_service import run_backup
+
+    try:
+        result = await run_backup()
+        security_logger.info("Backup job: %s", result)
+    except Exception as exc:  # never let a backup failure crash the scheduler
+        security_logger.error("Backup job failed: %s", exc)
 
 
 def create_app() -> FastAPI:
@@ -68,6 +83,28 @@ def create_app() -> FastAPI:
     app.include_router(ledger_ui.router)
     app.include_router(bank_ui.router)
     app.include_router(bank.router, prefix="/api/v1")
+    app.include_router(backup.router, prefix="/api/v1")
+
+    @app.on_event("startup")
+    async def security_audit():
+        """Warn (or refuse to start) on unsafe production configuration."""
+        issues = []
+        if settings.secret_key_is_weak:
+            issues.append("APP_SECRET_KEY is missing/placeholder/too short — "
+                          "anyone could forge login cookies. Set a strong random value.")
+        if settings.admin_password_is_default:
+            issues.append("Admin password is the default 'changeme123' — change it now.")
+        if not settings.debug and not settings.cookie_secure:
+            issues.append("Serving in production without COOKIE_SECURE — enable it behind HTTPS.")
+
+        # In production, a forgeable secret is fatal; refuse to start.
+        if not settings.debug and settings.secret_key_is_weak:
+            raise RuntimeError(
+                "Refusing to start with a weak APP_SECRET_KEY while DEBUG is off. "
+                "Set a strong APP_SECRET_KEY in the environment."
+            )
+        for issue in issues:
+            security_logger.warning("SECURITY: %s", issue)
 
     @app.on_event("startup")
     async def start_scheduler():
@@ -77,6 +114,13 @@ def create_app() -> FastAPI:
             id="daily_watchdog",
             replace_existing=True,
         )
+        if settings.gdrive_backup_enabled:
+            scheduler.add_job(
+                nightly_backup_job,
+                CronTrigger(hour=2, minute=0, timezone="Europe/Prague"),
+                id="nightly_backup",
+                replace_existing=True,
+            )
         scheduler.start()
 
     @app.on_event("shutdown")

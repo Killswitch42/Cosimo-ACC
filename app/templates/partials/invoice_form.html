@@ -1,0 +1,49 @@
+{% set f = f | default({}) %}
+<form hx-post="/invoices/create" hx-target="#invoice-list" hx-swap="innerHTML">
+    {% if extract_error %}
+    <p class="badge badge-blocker" style="display:block;padding:0.5rem">⚠ {{ extract_error }}</p>
+    {% elif extract_note %}
+    <p class="badge badge-info" style="display:block;padding:0.5rem">✓ Předvyplněno ({{ extract_note }}). Zkontrolujte a upravte.</p>
+    {% endif %}
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.6rem;max-width:900px">
+        <label>Typ dokladu<br>
+            <select name="direction">
+                <option value="RECEIVED" {% if f.get('direction','RECEIVED')=='RECEIVED' %}selected{% endif %}>Přijatá (výdaj / účtenka)</option>
+                <option value="ISSUED" {% if f.get('direction')=='ISSUED' %}selected{% endif %}>Vydaná (příjem)</option>
+            </select>
+        </label>
+        <label>Číslo dokladu<br><input name="invoice_number" required value="{{ f.get('invoice_number','') }}"></label>
+        <label>Variabilní symbol<br><input name="variable_symbol" placeholder="nepovinné" value="{{ f.get('variable_symbol','') }}"></label>
+
+        <label>Datum vystavení<br><input type="date" name="invoice_date" required value="{{ f.get('invoice_date','') }}"></label>
+        <label>DUZP<br><input type="date" name="duzp" value="{{ f.get('duzp','') }}"></label>
+        <label>Splatnost<br><input type="date" name="due_date" value="{{ f.get('due_date','') }}"></label>
+
+        <label>Protistrana<br><input name="counterparty_name" required value="{{ f.get('counterparty_name','') }}"></label>
+        <label>IČO<br><input name="counterparty_ico" placeholder="8 číslic" value="{{ f.get('counterparty_ico','') }}"></label>
+        <label>DIČ<br><input name="counterparty_dic" placeholder="např. CZ12345678" value="{{ f.get('counterparty_dic','') }}"></label>
+
+        <label>Popis položky<br><input name="line_description" required value="{{ f.get('line_description','') }}"></label>
+        <label>Částka bez DPH<br><input name="unit_price_net" type="number" step="0.01" min="0" required value="{{ f.get('unit_price_net','') }}"></label>
+        <label>Sazba DPH<br>
+            <select name="vat_rate">
+                <option value="21.00" {% if f.get('vat_rate','21.00')=='21.00' %}selected{% endif %}>21 %</option>
+                <option value="12.00" {% if f.get('vat_rate')=='12.00' %}selected{% endif %}>12 %</option>
+                <option value="0.00" {% if f.get('vat_rate')=='0.00' %}selected{% endif %}>0 %</option>
+            </select>
+        </label>
+
+        <label>Účtovat na účet (nepovinné, <b>ne</b> číslo účtu)<br>
+            <input name="account_number" list="accounts" placeholder="např. 518 služby, 602 tržby" value="{{ f.get('account_number','') }}">
+        </label>
+    </div>
+    <datalist id="accounts">
+        <option value="602">602 – Tržby z prodeje služeb</option>
+        <option value="604">604 – Tržby za zboží</option>
+        <option value="518">518 – Ostatní služby</option>
+        <option value="501">501 – Spotřeba materiálu</option>
+        <option value="513">513 – Reprezentace (daňově neuznatelné)</option>
+        <option value="543">543 – Dary (daňově neuznatelné)</option>
+    </datalist>
+    <p><button type="submit">Uložit a zaúčtovat</button></p>
+</form>

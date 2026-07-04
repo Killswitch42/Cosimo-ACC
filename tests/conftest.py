@@ -2,9 +2,13 @@ import os
 from datetime import date
 
 os.environ.setdefault("APP_SECRET_KEY", "test-secret-key")
-os.environ.setdefault(
-    "DATABASE_URL",
-    "postgresql+asyncpg://medici:medici_dev_pass@localhost:5432/medici_accounting",
+# Tests MUST run against a dedicated database, never the production one.
+# Create it once with:
+#   docker exec medici-pg psql -U medici -d medici_accounting -c "CREATE DATABASE medici_accounting_test;"
+#   DATABASE_URL=postgresql+asyncpg://medici:medici_dev_pass@localhost:5432/medici_accounting_test alembic upgrade head
+#   DATABASE_URL=...medici_accounting_test python -m app.seed.run_seed
+os.environ["DATABASE_URL"] = (
+    "postgresql+asyncpg://medici:medici_dev_pass@localhost:5432/medici_accounting_test"
 )
 
 import pytest_asyncio

@@ -110,7 +110,7 @@ async def seed_chart_of_accounts(session: AsyncSession) -> None:
 
 async def seed_admin_user(session: AsyncSession, company: Company) -> None:
     existing = await session.scalar(
-        select(User).where(User.email == "admin@medicianalytica.cz").limit(1)
+        select(User).where(User.email == settings.admin_email).limit(1)
     )
     if existing:
         print(f"✓ Admin user exists: {existing.email}")
@@ -118,15 +118,18 @@ async def seed_admin_user(session: AsyncSession, company: Company) -> None:
 
     admin = User(
         company_id=company.id,
-        email="admin@medicianalytica.cz",
+        email=settings.admin_email,
         full_name="Administrator",
-        hashed_password=hash_password("changeme123"),
+        hashed_password=hash_password(settings.admin_password),
         role="admin",
         is_active=True,
     )
     session.add(admin)
     await session.flush()
-    print(f"✓ Admin user created: {admin.email}  ⚠ CHANGE PASSWORD IMMEDIATELY")
+    print(f"✓ Admin user created: {admin.email}")
+    if settings.admin_password_is_default:
+        print("  ⚠ Using the default password — CHANGE IT after first login "
+              "(or set ADMIN_PASSWORD in .env before seeding).")
 
 
 async def run() -> None:

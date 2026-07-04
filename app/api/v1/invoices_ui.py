@@ -5,6 +5,7 @@ Reuses the invoice-posting service (full double-entry + VAT register + AI
 classification) and the document service. Creation runs in its own transaction
 so a validation failure never poisons the follow-up listing query.
 """
+import logging
 import uuid
 from datetime import date
 from decimal import Decimal, InvalidOperation
@@ -15,12 +16,15 @@ from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 from sqlalchemy import select
 
+logger = logging.getLogger("medici.invoices")
+
 from app.database import async_session_factory
 from app.models.invoice import Invoice
 from app.models.user import User
 from app.schemas.invoice import InvoiceCreate, InvoiceLineCreate
 from app.services.auth_service import get_current_user, get_current_user_web
 from app.services.document_service import DocumentError, save_invoice_document
+from app.services.invoice_extraction_service import ExtractionError, extract_invoice
 from app.services.invoice_service import InvoiceError, post_invoice, void_invoice
 from app.services.ledger_service import LedgerError
 
@@ -60,6 +64,34 @@ async def invoices_page(
     )
 
 
+@router.post("/invoices/extract", response_class=HTMLResponse)
+async def invoices_extract(
+    request: Request,
+    file: UploadFile = File(...),
+    user: User = Depends(get_current_user),
+):
+    """Read an uploaded PDF invoice and return the entry form pre-filled."""
+    content = await file.read()
+    try:
+        fields, source = await extract_invoice(content, file.content_type, file.filename)
+        return templates.TemplateResponse(
+            "partials/invoice_form.html",
+            {"request": request, "f": fields, "extract_note": source},
+        )
+    except ExtractionError as exc:
+        return templates.TemplateResponse(
+            "partials/invoice_form.html",
+            {"request": request, "f": {}, "extract_error": str(exc)},
+        )
+    except Exception:
+        logger.exception("Invoice extraction failed")
+        return templates.TemplateResponse(
+            "partials/invoice_form.html",
+            {"request": request, "f": {},
+             "extract_error": "Zpracování PDF selhalo. Vyplňte údaje ručně."},
+        )
+
+
 @router.post("/invoices/create", response_class=HTMLResponse)
 async def invoices_create(
     request: Request,
@@ -81,36 +113,48 @@ async def invoices_create(
 ):
     error = None
     success = None
+
+    # Pre-validate the fields users most often mis-enter, with clear messages,
+    # before anything touches the database.
+    ico = _clean(counterparty_ico)
+    account = _clean(account_number)
+    if ico and (not ico.isdigit() or len(ico) != 8):
+        error = f"IČO musí mít přesně 8 číslic (zadáno „{ico}“) — nezaměňujte s číslem účtu."
+
     async with async_session_factory() as session:
-        try:
-            async with session.begin():
-                inv_date = date.fromisoformat(invoice_date)
-                data = InvoiceCreate(
-                    direction=direction,
-                    invoice_number=invoice_number,
-                    invoice_date=inv_date,
-                    duzp=date.fromisoformat(duzp) if duzp.strip() else inv_date,
-                    due_date=date.fromisoformat(due_date) if due_date.strip() else None,
-                    variable_symbol=_clean(variable_symbol),
-                    counterparty_name=counterparty_name,
-                    counterparty_ico=_clean(counterparty_ico),
-                    counterparty_dic=_clean(counterparty_dic),
-                    currency=currency or "CZK",
-                    lines=[
-                        InvoiceLineCreate(
-                            description=line_description,
-                            unit_price_net=Decimal(unit_price_net),
-                            vat_rate=Decimal(vat_rate),
-                            account_number=_clean(account_number),
-                        )
-                    ],
-                )
-                invoice = await post_invoice(
-                    session, user.company_id, data, posted_by=user.email
-                )
-            success = f"Faktura {invoice.invoice_number} byla zaúčtována."
-        except (InvoiceError, LedgerError, ValidationError, ValueError, InvalidOperation) as exc:
-            error = _friendly_error(exc)
+        if error is None:
+            try:
+                async with session.begin():
+                    inv_date = date.fromisoformat(invoice_date)
+                    data = InvoiceCreate(
+                        direction=direction,
+                        invoice_number=invoice_number,
+                        invoice_date=inv_date,
+                        duzp=date.fromisoformat(duzp) if duzp.strip() else inv_date,
+                        due_date=date.fromisoformat(due_date) if due_date.strip() else None,
+                        variable_symbol=_clean(variable_symbol),
+                        counterparty_name=counterparty_name,
+                        counterparty_ico=ico,
+                        counterparty_dic=_clean(counterparty_dic),
+                        currency=currency or "CZK",
+                        lines=[
+                            InvoiceLineCreate(
+                                description=line_description,
+                                unit_price_net=Decimal(unit_price_net),
+                                vat_rate=Decimal(vat_rate),
+                                account_number=account,
+                            )
+                        ],
+                    )
+                    invoice = await post_invoice(
+                        session, user.company_id, data, posted_by=user.email
+                    )
+                success = f"Faktura {invoice.invoice_number} byla zaúčtována."
+            except (InvoiceError, LedgerError, ValidationError, ValueError, InvalidOperation) as exc:
+                error = _friendly_error(exc)
+            except Exception as exc:  # never return a 500 to the form — always show a reason
+                logger.exception("Invoice create failed")
+                error = f"Uložení selhalo: {type(exc).__name__}. Zkontrolujte zadané údaje."
 
         # Fresh transaction — safe even if the create above rolled back.
         async with session.begin():
