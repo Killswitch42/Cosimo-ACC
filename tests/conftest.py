@@ -7,8 +7,12 @@ os.environ.setdefault("APP_SECRET_KEY", "test-secret-key")
 #   docker exec medici-pg psql -U medici -d medici_accounting -c "CREATE DATABASE medici_accounting_test;"
 #   DATABASE_URL=postgresql+asyncpg://medici:medici_dev_pass@localhost:5432/medici_accounting_test alembic upgrade head
 #   DATABASE_URL=...medici_accounting_test python -m app.seed.run_seed
-os.environ["DATABASE_URL"] = (
-    "postgresql+asyncpg://medici:medici_dev_pass@localhost:5432/medici_accounting_test"
+# A dedicated TEST_DATABASE_URL (if set) lets the suite run against any
+# throwaway cluster/port. It must point at a *_test database — never a
+# production one. Falls back to the local docker-compose default.
+os.environ["DATABASE_URL"] = os.environ.get(
+    "TEST_DATABASE_URL",
+    "postgresql+asyncpg://medici:medici_dev_pass@localhost:5432/medici_accounting_test",
 )
 
 import pytest_asyncio

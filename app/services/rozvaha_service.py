@@ -6,9 +6,18 @@ Separate maps for AKTIVA and PASIVA to avoid the naming collision in the
 statutory form where both sections use "B.I", "B.II" etc.
 """
 from decimal import Decimal
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.models.ledger_account import LedgerAccount
 from app.services.ledger_service import get_trial_balance
 import uuid
+
+
+# Dual-nature settlement accounts — a receivable (aktiva) when in a net debit
+# position, a payable (pasiva) when in a net credit position. They appear in
+# both AKTIVA C.II and PASIVA B.III; generate_rozvaha routes each to exactly
+# one side by the sign of its balance so it is never counted on both.
+DUAL_NATURE_ACCOUNTS: tuple[str, ...] = ("341", "342")
 
 
 AKTIVA_LINE_MAP: dict[str, list[str]] = {
@@ -56,8 +65,8 @@ PASIVA_LINE_MAP: dict[str, list[str]] = {
                "341", "342", "343", "345",
                "361", "362", "364", "365", "366",
                "372", "379",
-               "383", "384", "389"],                      # Krátkodobé závazky
-    "C":     ["383", "384", "389"],                        # Časové rozlišení pasiv
+               "389"],                                     # Krátkodobé závazky (389 = dohadné účty pasivní)
+    "C":     ["383", "384"],                               # Časové rozlišení pasiv (383 výdaje / 384 výnosy příštích období)
 }
 
 
@@ -73,15 +82,39 @@ async def generate_rozvaha(
     balances = await get_trial_balance(session, company_id, fiscal_period_id)
     balance_by_account = {b.account_number: b.closing_balance_czk for b in balances}
 
-    def sum_prefixes(prefixes: list[str]) -> Decimal:
+    # closing_balance_czk is normal-balance-relative (positive = on the account's
+    # natural side per balance_type). To interpret the sign of a dual-nature
+    # account we need its balance_type, so load a lookup for the posted accounts.
+    bt_result = await session.execute(
+        select(LedgerAccount.account_number, LedgerAccount.balance_type)
+    )
+    balance_type = {num: bt for num, bt in bt_result.all()}
+
+    def is_dual(acct: str) -> bool:
+        return acct.startswith(DUAL_NATURE_ACCOUNTS)
+
+    def debit_position(acct: str, bal: Decimal) -> Decimal:
+        """Balance re-expressed debit-positive: >0 receivable, <0 payable."""
+        return bal if balance_type.get(acct, "DEBIT") == "DEBIT" else -bal
+
+    def sum_prefixes(prefixes: list[str], side: str) -> Decimal:
         total = Decimal("0.00")
         for acct, bal in balance_by_account.items():
-            if any(acct.startswith(p) for p in prefixes):
+            if not any(acct.startswith(p) for p in prefixes):
+                continue
+            if is_dual(acct):
+                dp = debit_position(acct, bal)
+                # Route to whichever side the sign says; skip on the other.
+                if side == "aktiva" and dp > 0:
+                    total += dp
+                elif side == "pasiva" and dp < 0:
+                    total += -dp
+            else:
                 total += bal
         return total
 
-    aktiva = {line: sum_prefixes(prefixes) for line, prefixes in AKTIVA_LINE_MAP.items()}
-    pasiva = {line: sum_prefixes(prefixes) for line, prefixes in PASIVA_LINE_MAP.items()}
+    aktiva = {line: sum_prefixes(prefixes, "aktiva") for line, prefixes in AKTIVA_LINE_MAP.items()}
+    pasiva = {line: sum_prefixes(prefixes, "pasiva") for line, prefixes in PASIVA_LINE_MAP.items()}
 
     aktiva_total = sum(aktiva.values())
     pasiva_total = sum(pasiva.values())
